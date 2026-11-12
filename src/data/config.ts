@@ -1,0 +1,1 @@
+export const DEFAULT_CURRENT_TIME = 630; // 10:30 AM
