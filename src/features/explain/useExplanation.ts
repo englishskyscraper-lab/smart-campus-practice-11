@@ -18,8 +18,10 @@ export function useExplanation(): UseExplanationReturn {
   const [error, setError] = useState<string | null>(null);
   const loadingRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestIdRef = useRef(0);
 
   const clear = useCallback(() => {
+    requestIdRef.current += 1;
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
@@ -37,8 +39,12 @@ export function useExplanation(): UseExplanationReturn {
       setLoading(true);
       setError(null);
 
+      const requestId = (requestIdRef.current += 1);
+      const isCurrent = () => requestIdRef.current === requestId;
+
       const adapterPromise = generateExplanation(input).then((output) => {
-        if (timerRef.current) {
+        // Only clear the timer if it still belongs to this request.
+        if (isCurrent() && timerRef.current) {
           clearTimeout(timerRef.current);
           timerRef.current = null;
         }
@@ -53,15 +59,21 @@ export function useExplanation(): UseExplanationReturn {
 
       try {
         const output = await Promise.race([adapterPromise, timeoutPromise]);
-        setExplanation(output.explanation);
+        if (isCurrent()) {
+          setExplanation(output.explanation);
+        }
       } catch {
-        setError(input.deterministicReason);
+        if (isCurrent()) {
+          setError(input.deterministicReason);
+        }
       } finally {
-        loadingRef.current = false;
-        setLoading(false);
-        if (timerRef.current) {
-          clearTimeout(timerRef.current);
-          timerRef.current = null;
+        if (isCurrent()) {
+          loadingRef.current = false;
+          setLoading(false);
+          if (timerRef.current) {
+            clearTimeout(timerRef.current);
+            timerRef.current = null;
+          }
         }
       }
     },

@@ -170,6 +170,56 @@ describe("useExplanation", () => {
     expect(result.current.error).toBeNull();
   });
 
+  test("generate — a stale request from before clear() cannot clobber a later request's timeout or state", async () => {
+    const { result } = renderHook(() => useExplanation());
+
+    const firstInput = makeInput({ roomLabel: "Room First" });
+    const secondInput = makeInput({
+      roomLabel: "Room Second",
+      deterministicReason: "Second room fallback reason.",
+    });
+
+    // First adapter resolves after 50ms (still pending when we clear()).
+    vi.mocked(generateExplanation).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(() => resolve({ explanation: "STALE first explanation" }), 50);
+        })
+    );
+    // Second adapter is slow so the second request must rely on its timeout.
+    vi.mocked(generateExplanation).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(() => resolve({ explanation: "second explanation" }), 2000);
+        })
+    );
+
+    // Start the first request (long timeout so it doesn't time out).
+    act(() => {
+      result.current.generate(firstInput, 5000);
+    });
+
+    // Clear while the first adapter is still pending, then start a second
+    // request with a short timeout.
+    act(() => {
+      result.current.clear();
+    });
+    act(() => {
+      result.current.generate(secondInput, 100);
+    });
+
+    // The second request should time out and fall back to its deterministic
+    // reason — the stale first request must not clear its timer or overwrite
+    // its state.
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.explanation).not.toBe("STALE first explanation");
+    expect(result.current.explanation).toBeNull();
+    expect(result.current.error).toBe(secondInput.deterministicReason);
+  });
+
   test("generate — timeout does not overwrite a successful result that arrived first", async () => {
     const { result } = renderHook(() => useExplanation());
     const input = makeInput();
