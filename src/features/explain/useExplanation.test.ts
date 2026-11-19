@@ -2,7 +2,13 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useExplanation } from "./useExplanation";
+import { generateExplanation } from "./mockAdapter";
 import type { ExplainInput } from "./types";
+
+vi.mock("./mockAdapter", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./mockAdapter")>();
+  return { ...actual, generateExplanation: vi.fn(actual.generateExplanation) };
+});
 
 function makeInput(overrides: Partial<ExplainInput> = {}): ExplainInput {
   return {
@@ -61,6 +67,22 @@ describe("useExplanation", () => {
     });
 
     expect(result.current.explanation).not.toBeNull();
+  });
+
+  test("generate — falls back to the deterministic result when the adapter fails for valid input", async () => {
+    const { result } = renderHook(() => useExplanation());
+    const input = makeInput();
+    vi.mocked(generateExplanation).mockRejectedValueOnce(
+      new Error("simulated adapter failure")
+    );
+
+    await act(async () => {
+      await result.current.generate(input);
+    });
+
+    expect(result.current.explanation).toBeNull();
+    expect(result.current.error).toBe(input.deterministicReason);
+    expect(result.current.loading).toBe(false);
   });
 
   test("clear — resets explanation, loading, and error", async () => {

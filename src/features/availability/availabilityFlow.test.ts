@@ -52,6 +52,10 @@ describe("availability user flow (integration)", () => {
     expect(result.reasonCategory).toBe("room-blocked");
   });
 
+  test("I05 — an empty attendee field with no equipment filters returns all rooms", () => {
+    expect(searchRooms("", [])).toEqual(rooms);
+  });
+
   test("I04 — 50 attendees with Laboratory Equipment matches no room, leaving nothing to select", () => {
     expect(searchRooms("50", ["Laboratory Equipment"])).toEqual([]);
   });
