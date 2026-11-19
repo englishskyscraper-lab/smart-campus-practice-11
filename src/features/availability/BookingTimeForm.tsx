@@ -30,10 +30,11 @@ export default function BookingTimeForm({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {/* Start time */}
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-slate-600">
+          <label htmlFor="start-time" className="mb-1.5 block text-xs font-medium text-slate-600">
             Start Time
           </label>
           <input
+            id="start-time"
             type="time"
             value={startTime}
             onChange={(e) => onStartTimeChange(e.target.value)}
@@ -43,10 +44,11 @@ export default function BookingTimeForm({
 
         {/* End time */}
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-slate-600">
+          <label htmlFor="end-time" className="mb-1.5 block text-xs font-medium text-slate-600">
             End Time
           </label>
           <input
+            id="end-time"
             type="time"
             value={endTime}
             onChange={(e) => onEndTimeChange(e.target.value)}
@@ -56,13 +58,14 @@ export default function BookingTimeForm({
 
         {/* Current time slider */}
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-slate-600">
+          <label htmlFor="current-time" className="mb-1.5 block text-xs font-medium text-slate-600">
             Current Time:{" "}
             <span className="font-semibold text-slate-800">
               {formatTime(currentTime)}
             </span>
           </label>
           <input
+            id="current-time"
             type="range"
             min={0}
             max={1440}
