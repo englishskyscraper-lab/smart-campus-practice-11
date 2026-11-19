@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useExplanation } from "./useExplanation";
-import { generateExplanation } from "./mockAdapter";
+import { generateExplanation, MOCK_DELAY_MS } from "./mockAdapter";
 import type { ExplainInput } from "./types";
 
 vi.mock("./mockAdapter", async (importOriginal) => {
@@ -98,6 +98,92 @@ describe("useExplanation", () => {
     });
 
     expect(result.current.explanation).toBeNull();
+    expect(result.current.error).toBeNull();
+    expect(result.current.loading).toBe(false);
+  });
+
+  test("generate — simulates a timeout and falls back to deterministic reason", async () => {
+    const { result } = renderHook(() => useExplanation());
+    const input = makeInput();
+    // Override the mock to use a delay longer than the timeout we will pass
+    vi.mocked(generateExplanation).mockImplementationOnce(() =>
+      new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({ explanation: "late explanation" });
+        }, MOCK_DELAY_MS * 10);
+      })
+    );
+
+    await act(async () => {
+      // timeout of 50ms — adapter won't resolve in time
+      await result.current.generate(input, 50);
+    });
+
+    expect(result.current.explanation).toBeNull();
+    expect(result.current.error).toBe(input.deterministicReason);
+    expect(result.current.loading).toBe(false);
+  });
+
+  test("generate — timeout cleanup: loading is false and no duplicate requests are accepted after timeout", async () => {
+    const { result } = renderHook(() => useExplanation());
+    const input = makeInput();
+
+    vi.mocked(generateExplanation).mockImplementationOnce(() =>
+      new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({ explanation: "late explanation" });
+        }, MOCK_DELAY_MS * 10);
+      })
+    );
+
+    await act(async () => {
+      await result.current.generate(input, 50);
+    });
+
+    expect(result.current.loading).toBe(false);
+
+    // A second generate call should be accepted now that loading cleared
+    vi.mocked(generateExplanation).mockImplementationOnce(() =>
+      Promise.resolve({ explanation: "second explanation" })
+    );
+
+    await act(async () => {
+      await result.current.generate(input, 5000);
+    });
+
+    expect(result.current.explanation).toBe("second explanation");
+    expect(result.current.loading).toBe(false);
+  });
+
+  test("generate — normal completion within timeout produces an explanation", async () => {
+    const { result } = renderHook(() => useExplanation());
+    const input = makeInput();
+
+    // default mock resolves in ~300ms; give a generous 5000ms timeout
+    await act(async () => {
+      await result.current.generate(input, 5000);
+    });
+
+    expect(result.current.explanation).not.toBeNull();
+    expect(result.current.explanation).toContain("Room A-101");
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBeNull();
+  });
+
+  test("generate — timeout does not overwrite a successful result that arrived first", async () => {
+    const { result } = renderHook(() => useExplanation());
+    const input = makeInput();
+
+    // adapter resolves immediately; timeout is long
+    vi.mocked(generateExplanation).mockImplementationOnce(() =>
+      Promise.resolve({ explanation: "fast explanation" })
+    );
+
+    await act(async () => {
+      await result.current.generate(input, 5000);
+    });
+
+    expect(result.current.explanation).toBe("fast explanation");
     expect(result.current.error).toBeNull();
     expect(result.current.loading).toBe(false);
   });

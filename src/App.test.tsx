@@ -129,4 +129,21 @@ describe("App explain availability UI", () => {
 
     expect(screen.queryByText(/AI-generated explanation \(mock\)/)).toBeNull();
   });
+
+  test("U09 — availability result remains unchanged after explanation is requested", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Check Availability" }));
+    expect(screen.getByText("Available")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Explain Availability/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/AI-generated explanation \(mock\)/)).toBeTruthy();
+    });
+
+    // The original availability result banner is still present unchanged
+    const banner = screen.getByText("Available").closest("section")!;
+    expect(within(banner).getByText(/Room is available from/)).toBeTruthy();
+  });
 });

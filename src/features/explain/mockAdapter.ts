@@ -5,7 +5,7 @@ import type { ExplainInput, ExplainOutput } from "./types";
 const MAX_ROOM_LABEL_LENGTH = 200;
 const MAX_REASON_LENGTH = 1000;
 const MAX_EXPLANATION_LENGTH = 500;
-const MOCK_DELAY_MS = 300;
+export const MOCK_DELAY_MS = 300;
 
 const VALID_REASON_CODES: ReadonlySet<ReasonCategory> = new Set([
   "invalid-interval",
@@ -135,11 +135,12 @@ function buildExplanation(input: ExplainInput): string {
 }
 
 export async function generateExplanation(
-  rawInput: unknown
+  rawInput: unknown,
+  delayMs: number = MOCK_DELAY_MS
 ): Promise<ExplainOutput> {
   const input = validateExplainInput(rawInput);
 
-  await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
 
   const rawOutput: ExplainOutput = { explanation: buildExplanation(input) };
 
