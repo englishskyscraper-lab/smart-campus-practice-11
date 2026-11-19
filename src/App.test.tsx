@@ -77,7 +77,8 @@ describe("App explain availability UI", () => {
     await waitFor(() => {
       expect(screen.getByText(/AI-generated explanation \(mock\)/)).toBeTruthy();
     });
-    expect(screen.getByText(/Room A-101/)).toBeTruthy();
+    const panel = screen.getByText(/AI-generated explanation \(mock\)/).closest("section")!;
+    expect(within(panel).getByText(/Room A-101/)).toBeTruthy();
   });
 
   test("U06 — explanation for an unavailable (blocked) room agrees with the deterministic result", async () => {
@@ -95,7 +96,8 @@ describe("App explain availability UI", () => {
     await waitFor(() => {
       expect(screen.getByText(/AI-generated explanation \(mock\)/)).toBeTruthy();
     });
-    expect(screen.getByText(/blocked/i)).toBeTruthy();
+    const panel = screen.getByText(/AI-generated explanation \(mock\)/).closest("section")!;
+    expect(within(panel).getByText(/blocked/i)).toBeTruthy();
   });
 
   test("U07 — changing the room clears any previous explanation", async () => {
