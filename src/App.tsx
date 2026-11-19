@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useMemo } from "react";
 import { Building2 } from "lucide-react";
 import type { Room } from "@/types";
 import { ALL_EQUIPMENT } from "@/data/rooms";
