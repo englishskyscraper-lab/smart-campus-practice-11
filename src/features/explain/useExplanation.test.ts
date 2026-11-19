@@ -237,4 +237,43 @@ describe("useExplanation", () => {
     expect(result.current.error).toBeNull();
     expect(result.current.loading).toBe(false);
   });
+
+  test("generate — a stale request that resolves after a later request succeeded cannot overwrite its explanation", async () => {
+    const { result } = renderHook(() => useExplanation());
+
+    const firstInput = makeInput({ roomLabel: "Room First" });
+    const secondInput = makeInput({ roomLabel: "Room Second" });
+
+    // First adapter is slow (still pending when clear() runs and long after).
+    vi.mocked(generateExplanation).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(() => resolve({ explanation: "STALE first explanation" }), 400);
+        })
+    );
+    // Second adapter resolves quickly and should win.
+    vi.mocked(generateExplanation).mockImplementationOnce(() =>
+      Promise.resolve({ explanation: "second explanation" })
+    );
+
+    act(() => {
+      result.current.generate(firstInput, 5000);
+    });
+    act(() => {
+      result.current.clear();
+    });
+    await act(async () => {
+      await result.current.generate(secondInput, 5000);
+    });
+
+    expect(result.current.explanation).toBe("second explanation");
+
+    // The stale first request resolves afterwards; it must not overwrite
+    // the second request's explanation or change loading/error state.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    expect(result.current.explanation).toBe("second explanation");
+    expect(result.current.error).toBeNull();
+    expect(result.current.loading).toBe(false);
+  });
 });
