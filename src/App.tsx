@@ -1,4 +1,7 @@
+import { useMemo } from "react";
+import { useMemo } from "react";
 import { Building2 } from "lucide-react";
+import type { Room } from "@/types";
 import { ALL_EQUIPMENT } from "@/data/rooms";
 import { bookings } from "@/data/bookings";
 import Timeline from "@/components/Timeline";
@@ -7,6 +10,9 @@ import RoomPicker from "@/features/rooms/RoomPicker";
 import { useAvailabilityCheck } from "@/features/availability/useAvailabilityCheck";
 import BookingTimeForm from "@/features/availability/BookingTimeForm";
 import ResultBanner from "@/features/availability/ResultBanner";
+import ExplanationPanel from "@/features/explain/ExplanationPanel";
+import { useExplanation } from "@/features/explain/useExplanation";
+import type { ExplainInput } from "@/features/explain/types";
 
 function App() {
   const {
@@ -28,6 +34,60 @@ function App() {
     updateCurrentTime,
     runCheck,
   } = useAvailabilityCheck();
+
+  const { explanation, loading, error, generate, clear } = useExplanation();
+
+  const explainInput = useMemo<ExplainInput | null>(() => {
+    if (!result || !selectedRoom) return null;
+    if (Number.isNaN(startMin) || Number.isNaN(endMin)) return null;
+    return {
+      roomLabel: selectedRoom.name,
+      startTime,
+      endTime,
+      isAvailable: result.decision === "available",
+      reasonCode: result.reasonCategory,
+      deterministicReason: result.reason,
+    };
+  }, [result, selectedRoom, startTime, endTime, startMin, endMin]);
+
+  const handleExplain = () => {
+    if (explainInput) generate(explainInput);
+  };
+
+  const handleCheck = () => {
+    clear();
+    runCheck();
+  };
+
+  const handleSelectRoom = (room: Room) => {
+    clear();
+    selectRoom(room);
+  };
+
+  const handleUpdateStartTime = (value: string) => {
+    clear();
+    updateStartTime(value);
+  };
+
+  const handleUpdateEndTime = (value: string) => {
+    clear();
+    updateEndTime(value);
+  };
+
+  const handleUpdateCurrentTime = (value: number) => {
+    clear();
+    updateCurrentTime(value);
+  };
+
+  const handleUpdateAttendees = (value: string) => {
+    clear();
+    updateAttendees(value);
+  };
+
+  const handleToggleEquipment = (item: string) => {
+    clear();
+    toggleEquipment(item);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -56,15 +116,15 @@ function App() {
           attendeeInput={attendeeInput}
           selectedEquipment={selectedEquipment}
           equipmentOptions={ALL_EQUIPMENT}
-          onAttendeesChange={updateAttendees}
-          onToggleEquipment={toggleEquipment}
+          onAttendeesChange={handleUpdateAttendees}
+          onToggleEquipment={handleToggleEquipment}
         />
 
         {/* Room selection */}
         <RoomPicker
           rooms={filteredRooms}
           selectedRoomId={selectedRoom?.id}
-          onSelectRoom={selectRoom}
+          onSelectRoom={handleSelectRoom}
         />
 
         {/* Time inputs */}
@@ -72,10 +132,10 @@ function App() {
           startTime={startTime}
           endTime={endTime}
           currentTime={currentTime}
-          onStartTimeChange={updateStartTime}
-          onEndTimeChange={updateEndTime}
-          onCurrentTimeChange={updateCurrentTime}
-          onCheck={runCheck}
+          onStartTimeChange={handleUpdateStartTime}
+          onEndTimeChange={handleUpdateEndTime}
+          onCurrentTimeChange={handleUpdateCurrentTime}
+          onCheck={handleCheck}
         />
 
         {/* Timeline */}
@@ -90,7 +150,17 @@ function App() {
         )}
 
         {/* Result */}
-        {result && <ResultBanner result={result} />}
+        {result && (
+          <>
+            <ResultBanner result={result} />
+            <ExplanationPanel
+              onExplain={handleExplain}
+              loading={loading}
+              explanation={explanation}
+              error={error}
+            />
+          </>
+        )}
       </main>
     </div>
   );

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, test } from "vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import App from "@/App";
 
 afterEach(cleanup);
@@ -59,5 +59,72 @@ describe("App availability UI", () => {
     fireEvent.change(screen.getByLabelText("Number of Attendees"), { target: { value: "50" } });
     expect(screen.queryByText("Available")).toBeNull();
     expect(screen.queryByText("Unavailable")).toBeNull();
+  });
+});
+
+describe("App explain availability UI", () => {
+  test("U05 — Explain button appears after a check and shows an AI-generated explanation (mock)", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Check Availability" }));
+    expect(screen.getByText("Available")).toBeTruthy();
+
+    const explainButton = screen.getByRole("button", { name: /Explain Availability/ });
+    expect(explainButton).toBeTruthy();
+
+    fireEvent.click(explainButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/AI-generated explanation \(mock\)/)).toBeTruthy();
+    });
+    expect(screen.getByText(/Room A-101/)).toBeTruthy();
+  });
+
+  test("U06 — explanation for an unavailable (blocked) room agrees with the deterministic result", async () => {
+    render(<App />);
+
+    fireEvent.change(screen.getByLabelText("Number of Attendees"), { target: { value: "10" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Computers" }));
+    fireEvent.click(screen.getByRole("button", { name: /Lab C-310/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Check Availability" }));
+
+    expect(screen.getByText("Unavailable")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Explain Availability/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/AI-generated explanation \(mock\)/)).toBeTruthy();
+    });
+    expect(screen.getByText(/blocked/i)).toBeTruthy();
+  });
+
+  test("U07 — changing the room clears any previous explanation", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Check Availability" }));
+    fireEvent.click(screen.getByRole("button", { name: /Explain Availability/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/AI-generated explanation \(mock\)/)).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Room B-204/ }));
+
+    expect(screen.queryByText(/AI-generated explanation \(mock\)/)).toBeNull();
+  });
+
+  test("U08 — running a new check clears any previous explanation", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Check Availability" }));
+    fireEvent.click(screen.getByRole("button", { name: /Explain Availability/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/AI-generated explanation \(mock\)/)).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Check Availability" }));
+
+    expect(screen.queryByText(/AI-generated explanation \(mock\)/)).toBeNull();
   });
 });
